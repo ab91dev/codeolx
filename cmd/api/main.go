@@ -1,16 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/ab91dev/codeolx/internal/config"
+	"github.com/ab91dev/codeolx/internal/db"
 	"github.com/ab91dev/codeolx/internal/handlers"
 )
 
 func main() {
 	cfg := config.MustLoad()
+
+	_, err := db.Connect(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("main.db.connect: %v",err)
+	}
+
+	fmt.Println("database connected")
+	fmt.Println("starting the server on render")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
