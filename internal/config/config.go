@@ -9,8 +9,6 @@ import (
 type Config struct {
 	Port string
 	Env string
-	Goos string
-	Goarch string
 	DatabaseURL string
 }
 
@@ -27,16 +25,6 @@ func MustLoad() Config {
 		panic("ENV is required")
 	}
 
-	goos := os.Getenv("GOOS")
-	if goos == ""{
-		panic("GOOS is required")
-	}
-
-	goarch := os.Getenv("GOARCH")
-	if goarch == ""{
-		panic("GOARCH is required")
-	}
-
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		panic("DATABASE_URL is required")
@@ -45,8 +33,6 @@ func MustLoad() Config {
 	return Config{
 		Port: port,
 		Env: env,
-		Goos: goos,
-		Goarch: goarch,
 		DatabaseURL: dbURL,
 	}
 }
