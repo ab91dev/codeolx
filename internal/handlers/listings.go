@@ -32,17 +32,16 @@ func Listings(db *sql.DB) http.HandlerFunc {
 		}
 		defer rows.Close()
 
-		listings := []listing{}
+		arrListings := []listings{}
 
 		for rows.Next() {
-			var l listing
+			var l listings
 			if err := rows.Scan(&l.ID, &l.Title, &l.Description, &l.Price, &l.City, &l.CreatedAt); err != nil {
 				log.Printf("rows.scan: %v",err)
 				http.Error(w,"internal error", http.StatusInternalServerError)
 				return
 			}
-
-			listings = append(listings,l)
+			arrListings = append(arrListings,l)
 		}
 
 		if err:= rows.Err(); err != nil {
@@ -53,9 +52,6 @@ func Listings(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type","application/json")
 		w.WriteHeader(http.StatusOK)
-
-		_ = json.NewEncoder(w).Encode(listings)
-
-		
+		_ = json.NewEncoder(w).Encode(arrListings)
 	}
 }
