@@ -20,7 +20,7 @@ func main() {
 	}
 
 	fmt.Println("database connected")
-	fmt.Println("starting the server on render")
+	fmt.Println("starting the server...")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
