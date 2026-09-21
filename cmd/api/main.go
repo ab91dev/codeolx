@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/ab91dev/codeolx/internal/config"
@@ -19,10 +21,17 @@ func main() {
 		log.Fatalf("main.db.connect: %v",err)
 	}
 
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level: slog.LevelDebug,
+	})
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	fmt.Println("database connected")
 	fmt.Println("starting the server...")
 
-	listingsHandler := handlers.NewListingHandlerParams(db)
+	listingsHandler := handlers.NewListingHandlerParams(db,logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
