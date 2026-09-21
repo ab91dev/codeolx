@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -19,11 +20,13 @@ type listings struct {
 
 type ListingHandlerParams struct {
 	db *sql.DB
+	logger *slog.Logger
 }
 
-func NewListingHandlerParams(db *sql.DB) *ListingHandlerParams {
+func NewListingHandlerParams(db *sql.DB, logger *slog.Logger) *ListingHandlerParams {
 	return &ListingHandlerParams{
 		db: db,
+		logger: logger,
 	}
 }
 
@@ -38,7 +41,8 @@ func (lh ListingHandlerParams) List(w http.ResponseWriter, r *http.Request) {
 		LIMIT 10`)
 
 	if err != nil {
-		log.Printf("query: %v",err)
+		//log.Printf("query: %v",err)
+		lh.logger.Error("listings query error", "err", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -71,12 +75,17 @@ func (lh ListingHandlerParams) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id := r.PathValue("id")
 	//fmt.Println("id",id)
+
+	lh.logger.Debug("debug log","listing_id",id)
+	lh.logger.Info("starting query","listing_id",id)
+	lh.logger.Warn("warn log","listing_id",id)
 	
 	_, err := lh.db.ExecContext(ctx,
 		`DELETE FROM listings WHERE id=$1`, id,
 	)
 	if err!=nil {
-		log.Printf("delete: %v",err)
+		//log.Printf("delete: %v",err)
+		lh.logger.Error("delete failed","listing_id",id,"error",err)
 		http.Error(w,"internal error", http.StatusInternalServerError)
 		return
 	}
