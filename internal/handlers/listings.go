@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/ab91dev/codeolx/internal/middleware"
 )
 
 type listings struct {
@@ -73,6 +75,7 @@ func (lh ListingHandlerParams) List(w http.ResponseWriter, r *http.Request) {
 
 func (lh ListingHandlerParams) Delete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	requestId := middleware.RequestIDFromContext(ctx)
 	id := r.PathValue("id")
 	//fmt.Println("id",id)
 
@@ -85,7 +88,7 @@ func (lh ListingHandlerParams) Delete(w http.ResponseWriter, r *http.Request) {
 	)
 	if err!=nil {
 		//log.Printf("delete: %v",err)
-		lh.logger.Error("delete failed","listing_id",id,"error",err)
+		lh.logger.Error("delete failed","listing_id",id,"request_id",requestId,"error",err)
 		http.Error(w,"internal error", http.StatusInternalServerError)
 		return
 	}
