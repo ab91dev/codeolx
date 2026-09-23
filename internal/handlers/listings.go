@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
@@ -16,7 +17,7 @@ type listings struct {
 	ID string `json:"id"`
 	Title string `json:"title"`
 	Description string `json:"description"`
-	Price string `json:"price"`
+	Price int64 `json:"price"`
 	City string `json:"city"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -94,10 +95,46 @@ func (lh ListingHandlerParams) Delete(w http.ResponseWriter, r *http.Request) {
 	if err!=nil {
 		//log.Printf("delete: %v",err)
 		lh.logger.Error("delete failed","listing_id",id,"request_id",requestId,"error",err)
-		//http.Error(w,"internal error", http.StatusInternalServerError)
 		httpx.Error(w,http.StatusInternalServerError,"something went wrong", httpx.CodeInternalError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (lh ListingHandlerParams) Create(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requestId := middleware.RequestIDFromContext(ctx)
+	
+	var req CreateListingRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		lh.logger.Error("failed to decode","request_id", requestId,"error",err)
+		httpx.Error(w,http.StatusBadRequest,"invalid body", httpx.CodeMalformedJSON)
+		return
+	}
+
+	// check
+	if err := req.Validate(); err != nil {
+		var verr *ValidationError
+		errors.As(err, &verr)
+		httpx.ValidationError(w, http.StatusUnprocessableEntity, err.Error(), httpx.CodeValidationFailed, verr.Field)
+		return
+	}
+	
+	row := lh.db.QueryRowContext(ctx, `
+	INSERT INTO listings (title,description,price,city) VALUES ($1,$2,$3,$4) RETURNING id, title, created_at`, req.Title, req.Description, req.Price, req.City)
+
+	var out CreateListingResponse
+	if err := row.Scan(&out.ID, &out.Title, &out.CreatedAt); err != nil {
+		lh.logger.Error("failed to insert","request_id",requestId, "error", err)
+		httpx.Error(w, http.StatusInternalServerError, "something went wrong", httpx.CodeInternalError)
+		return
+	}
+
+	lh.logger.Info("listing created", "request_id", requestId, "listing_id", out.ID)
+
+	w.Header().Set("Content-Type","application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_ = json.NewEncoder(w).Encode(out)	
 }
