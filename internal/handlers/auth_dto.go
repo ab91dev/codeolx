@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/mail"
 	"strings"
+	"time"
 )
 
 type SignUpRequest struct {
@@ -30,3 +31,8 @@ func (req SignUpRequest) Validate() error {
 
 	return nil
 }
+
+type SignUpResponse struct {
+	ID          string    `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+} 
