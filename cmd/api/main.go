@@ -33,12 +33,14 @@ func main() {
 	fmt.Println("starting the server...")
 
 	listingsHandler := handlers.NewListingHandlerParams(db,logger)
+	authHandler := handlers.NewAuthHandler(db,logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
 	mux.HandleFunc("GET /listings", listingsHandler.List)
 	mux.HandleFunc("DELETE /listings/{id}", listingsHandler.Delete)
 	mux.HandleFunc("POST /listings",listingsHandler.Create)
+	mux.HandleFunc("POST /signup",authHandler.SignUp)
 	
 	handler := middleware.RequestId(mux)
 
