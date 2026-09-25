@@ -41,6 +41,7 @@ func main() {
 	mux.HandleFunc("DELETE /listings/{id}", listingsHandler.Delete)
 	mux.HandleFunc("POST /listings",listingsHandler.Create)
 	mux.HandleFunc("POST /signup",authHandler.SignUp)
+	mux.HandleFunc("POST /signin",authHandler.SignIn)
 	
 	handler := middleware.RequestId(mux)
 
