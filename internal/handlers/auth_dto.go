@@ -51,3 +51,8 @@ func (req SignInRequest) Validate() error {
 
 	return nil
 }
+
+type SignInResponse struct {
+	Token string
+	ExpiresIn int 
+} 
