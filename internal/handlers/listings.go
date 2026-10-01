@@ -112,7 +112,7 @@ func (lh ListingHandlerParams) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w,http.StatusBadRequest,"invalid body", httpx.CodeMalformedJSON)
 		return
 	}
-
+	
 	// check
 	if err := req.Validate(); err != nil {
 		var verr *ValidationError
