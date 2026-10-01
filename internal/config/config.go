@@ -7,22 +7,26 @@ import (
 )
 
 type Config struct {
-	Port string
-	Env string
-	DatabaseURL string
-	JWTKey string
+	Port                string
+	Env                 string
+	DatabaseURL         string
+	JWTKey              string
+	StorageAccountID    string
+	StorageAccessKey    string
+	StorageAccessSecret string
+	StorageBucket       string
 }
 
 func MustLoad() Config {
 	godotenv.Load()
 
 	port := os.Getenv("PORT")
-	if port == ""{
+	if port == "" {
 		panic("PORT is required")
 	}
 
 	env := os.Getenv("ENV")
-	if env == ""{
+	if env == "" {
 		panic("ENV is required")
 	}
 
@@ -36,10 +40,34 @@ func MustLoad() Config {
 		panic("JWT_KEY is required")
 	}
 
+	storageAccountID := os.Getenv("STORAGE_ACCOUNT_ID")
+	if storageAccountID == "" {
+		panic("STORAGE_ACCOUNT_ID is required")
+	}
+
+	storageAccessKey := os.Getenv("STORAGE_ACCESS_KEY")
+	if storageAccessKey == "" {
+		panic("STORAGE_ACCESS_KEY is required")
+	}
+
+	storageAccessSecret := os.Getenv("STORAGE_ACCESS_SECRET")
+	if storageAccessSecret == "" {
+		panic("STORAGE_ACCESS_SECRET is required")
+	}
+
+	storageBucket := os.Getenv("BUCKET")
+	if storageBucket == "" {
+		panic("BUCKET is required")
+	}
+
 	return Config{
-		Port: port,
-		Env: env,
-		DatabaseURL: dbURL,
-		JWTKey: jwtKey,
+		Port:                port,
+		Env:                 env,
+		DatabaseURL:         dbURL,
+		JWTKey:              jwtKey,
+		StorageAccountID:    storageAccountID,
+		StorageAccessKey:    storageAccessKey,
+		StorageAccessSecret: storageAccessSecret,
+		StorageBucket:       storageBucket,
 	}
 }
