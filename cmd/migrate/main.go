@@ -41,5 +41,5 @@ func main() {
 		log.Fatalf("unknown command: %s", os.Args[1])
 	}
 
-	fmt.Println("running migration")
+	fmt.Println("migration completed successfully")
 }
