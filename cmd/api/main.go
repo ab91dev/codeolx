@@ -33,7 +33,7 @@ func main() {
 	fmt.Println("starting the server...")
 
 	listingsHandler := handlers.NewListingHandlerParams(db,logger)
-	authHandler := handlers.NewAuthHandler(db,logger)
+	authHandler := handlers.NewAuthHandler(db,logger,cfg)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
