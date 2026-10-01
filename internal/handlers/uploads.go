@@ -5,18 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/ab91dev/codeolx/internal/httpx"
 	"github.com/ab91dev/codeolx/internal/middleware"
+	"github.com/ab91dev/codeolx/internal/storage"
 )
 
 type UploadHandler struct {
 	logger *slog.Logger
+	store  *storage.Client
 }
 
-func NewUploadHandler(logger *slog.Logger) *UploadHandler {
+func NewUploadHandler(logger *slog.Logger, store *storage.Client) *UploadHandler {
 	return &UploadHandler{
 		logger: logger,
+		store:  store,
 	}
 }
 
@@ -51,8 +55,37 @@ func (uh UploadHandler) Presign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// for _, f := range req.Files {
+	uploads := make([]PresignUpload, 0, len(req.Files))
+	for _, f := range req.Files {
+		ext, ok := allowedContentTypes[f.ContentType]
+		if !ok {
+			httpx.Error(w, http.StatusBadRequest, "only image/jpeg, image/png are allowed", httpx.CodeValidationFailed)
+			return
+		}
 
-	// }
+		if f.SizeBytes <= 0 || f.SizeBytes > maxImageBytes {
+			httpx.Error(w, http.StatusBadRequest, fmt.Sprintf("size must be atmost %d", maxImageBytes), httpx.CodeValidationFailed)
+			return
+		}
 
+		key := mintUploadKey(userID, ext)
+
+		url, err := uh.store.PresignUpload(ctx, key, f.ContentType, f.SizeBytes, presignTTL)
+		if err != nil {
+			log.Error("presign failed", "err", err, "key", key)
+			httpx.Error(w, http.StatusInternalServerError, "something went wrong", httpx.CodeInternalError)
+			return
+		}
+
+		uploads = append(uploads, PresignUpload{
+			UploadURL: url,
+			ObjectKey: key,
+			ExpiresAt: time.Now().Add(presignTTL),
+		})
+	}
+
+	log.Info("presigned upload issued", "count", len(uploads))
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(PresignResponse{Uploads: uploads})
 }
