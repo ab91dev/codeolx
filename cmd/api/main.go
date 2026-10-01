@@ -19,12 +19,12 @@ func main() {
 
 	db, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("main.db.connect: %v",err)
+		log.Fatalf("main.db.connect: %v", err)
 	}
 
 	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
-		Level: slog.LevelDebug,
+		Level:     slog.LevelDebug,
 	})
 	logger := slog.New(logHandler)
 	slog.SetDefault(logger)
@@ -32,29 +32,30 @@ func main() {
 	fmt.Println("database connected")
 	fmt.Println("starting the server...")
 
-	listingsHandler := handlers.NewListingHandlerParams(db,logger)
-	authHandler := handlers.NewAuthHandler(db,logger,cfg)
+	listingsHandler := handlers.NewListingHandlerParams(db, logger)
+	authHandler := handlers.NewAuthHandler(db, logger, cfg)
+	requireAuth := middleware.RequireAuth(logger, cfg.JWTKey)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
 	mux.HandleFunc("GET /listings", listingsHandler.List)
-	mux.HandleFunc("DELETE /listings/{id}", listingsHandler.Delete)
-	mux.HandleFunc("POST /listings",listingsHandler.Create)
-	mux.HandleFunc("POST /signup",authHandler.SignUp)
-	mux.HandleFunc("POST /signin",authHandler.SignIn)
-	
+	mux.Handle("DELETE /listings/{id}", requireAuth(http.HandlerFunc(listingsHandler.Delete)))
+	mux.HandleFunc("POST /listings", listingsHandler.Create)
+	mux.HandleFunc("POST /signup", authHandler.SignUp)
+	mux.HandleFunc("POST /signin", authHandler.SignIn)
+
 	handler := middleware.RequestId(mux)
 
 	srv := &http.Server{
-		Addr: ":" + cfg.Port,
-		Handler: handler,
-		ReadTimeout: time.Second * 10,
+		Addr:         ":" + cfg.Port,
+		Handler:      handler,
+		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 40,
-		IdleTimeout: time.Second * 120,
+		IdleTimeout:  time.Second * 120,
 	}
 
 	log.Printf("Server is listening on %s", srv.Addr)
-	if err := srv.ListenAndServe(); err != nil{
-		log.Fatalf("Server failed: %v",err)
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatalf("Server failed: %v", err)
 	}
 }
