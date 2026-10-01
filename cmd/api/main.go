@@ -35,6 +35,7 @@ func main() {
 	listingsHandler := handlers.NewListingHandlerParams(db, logger)
 	authHandler := handlers.NewAuthHandler(db, logger, cfg)
 	requireAuth := middleware.RequireAuth(logger, cfg.JWTKey)
+	uploadHandler := handlers.NewUploadHandler(logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
@@ -43,6 +44,7 @@ func main() {
 	mux.Handle("POST /listings", requireAuth(http.HandlerFunc(listingsHandler.Create)))
 	mux.HandleFunc("POST /signup", authHandler.SignUp)
 	mux.HandleFunc("POST /signin", authHandler.SignIn)
+	mux.Handle("POST /uploads/presign", requireAuth(http.HandlerFunc(uploadHandler.Presign)))
 
 	handler := middleware.RequestId(mux)
 
