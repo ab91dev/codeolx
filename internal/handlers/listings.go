@@ -17,41 +17,69 @@ type listings struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func Listings(db *sql.DB) http.HandlerFunc {
-	return func (w http.ResponseWriter, r *http.Request){
-		rows,err := db.Query(
-			`SELECT id, title, description, price, city, created_at
-			FROM listings
-			ORDER BY created_at DESC
-			LIMIT 10`)
+type ListingHandlerParams struct {
+	db *sql.DB
+}
 
-		if err != nil {
-			log.Printf("query: %v",err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
-		defer rows.Close()
+func NewListingHandlerParams(db *sql.DB) *ListingHandlerParams {
+	return &ListingHandlerParams{
+		db: db,
+	}
+}
 
-		arrListings := []listings{}
+func (lh ListingHandlerParams) List(w http.ResponseWriter, r *http.Request) {	
+	// request scoped context
+	ctx := r.Context()
 
-		for rows.Next() {
-			var l listings
-			if err := rows.Scan(&l.ID, &l.Title, &l.Description, &l.Price, &l.City, &l.CreatedAt); err != nil {
-				log.Printf("rows.scan: %v",err)
-				http.Error(w,"internal error", http.StatusInternalServerError)
-				return
-			}
-			arrListings = append(arrListings,l)
-		}
+	rows,err := lh.db.QueryContext(ctx,
+		`SELECT id, title, description, price, city, created_at
+		FROM listings
+		ORDER BY created_at DESC
+		LIMIT 10`)
 
-		if err:= rows.Err(); err != nil {
-			log.Printf("rows.err; %v",err)
+	if err != nil {
+		log.Printf("query: %v",err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	arrListings := []listings{}
+
+	for rows.Next() {
+		var l listings
+		if err := rows.Scan(&l.ID, &l.Title, &l.Description, &l.Price, &l.City, &l.CreatedAt); err != nil {
+			log.Printf("rows.scan: %v",err)
 			http.Error(w,"internal error", http.StatusInternalServerError)
 			return
 		}
-
-		w.Header().Set("Content-Type","application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(arrListings)
+		arrListings = append(arrListings,l)
 	}
+
+	if err:= rows.Err(); err != nil {
+		log.Printf("rows.err; %v",err)
+		http.Error(w,"internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type","application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(arrListings)
+}
+
+func (lh ListingHandlerParams) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id := r.PathValue("id")
+	//fmt.Println("id",id)
+	
+	_, err := lh.db.ExecContext(ctx,
+		`DELETE FROM listings WHERE id=$1`, id,
+	)
+	if err!=nil {
+		log.Printf("delete: %v",err)
+		http.Error(w,"internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
