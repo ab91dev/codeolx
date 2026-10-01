@@ -6,17 +6,14 @@ import (
 	"time"
 
 	"github.com/ab91dev/codeolx/internal/config"
+	"github.com/ab91dev/codeolx/internal/handlers"
 )
 
 func main() {
 	cfg := config.MustLoad()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request){
-		w.Header().Set("Content-Type","application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
-	})
+	mux.HandleFunc("GET /healthz", handlers.Healthz)
 
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,
