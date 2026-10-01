@@ -36,3 +36,18 @@ type SignUpResponse struct {
 	ID          string    `json:"id"`
 	CreatedAt   time.Time `json:"created_at"`
 } 
+
+type SignInRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (req SignInRequest) Validate() error {
+
+	// Validation of email field
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		return &ValidationError{Field: "email", Msg: "must be a valid email address"}
+	}
+
+	return nil
+}
