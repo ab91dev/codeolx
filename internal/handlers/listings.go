@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ab91dev/codeolx/internal/httpx"
 	"github.com/ab91dev/codeolx/internal/middleware"
 )
 
@@ -45,7 +46,9 @@ func (lh ListingHandlerParams) List(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		//log.Printf("query: %v",err)
 		lh.logger.Error("listings query error", "err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		//http.Error(w, "internal error", http.
+		// StatusInternalServerError)
+		httpx.Error(w,http.StatusInternalServerError,"something went wrong", httpx.CodeInternalError)
 		return
 	}
 	defer rows.Close()
@@ -56,7 +59,8 @@ func (lh ListingHandlerParams) List(w http.ResponseWriter, r *http.Request) {
 		var l listings
 		if err := rows.Scan(&l.ID, &l.Title, &l.Description, &l.Price, &l.City, &l.CreatedAt); err != nil {
 			log.Printf("rows.scan: %v",err)
-			http.Error(w,"internal error", http.StatusInternalServerError)
+			//http.Error(w,"internal error", http.StatusInternalServerError)
+			httpx.Error(w,http.StatusInternalServerError,"something went wrong", httpx.CodeInternalError)
 			return
 		}
 		arrListings = append(arrListings,l)
@@ -64,7 +68,8 @@ func (lh ListingHandlerParams) List(w http.ResponseWriter, r *http.Request) {
 
 	if err:= rows.Err(); err != nil {
 		log.Printf("rows.err; %v",err)
-		http.Error(w,"internal error", http.StatusInternalServerError)
+		//http.Error(w,"internal error", http.StatusInternalServerError)
+		httpx.Error(w,http.StatusInternalServerError,"something went wrong", httpx.CodeInternalError)
 		return
 	}
 
@@ -89,7 +94,8 @@ func (lh ListingHandlerParams) Delete(w http.ResponseWriter, r *http.Request) {
 	if err!=nil {
 		//log.Printf("delete: %v",err)
 		lh.logger.Error("delete failed","listing_id",id,"request_id",requestId,"error",err)
-		http.Error(w,"internal error", http.StatusInternalServerError)
+		//http.Error(w,"internal error", http.StatusInternalServerError)
+		httpx.Error(w,http.StatusInternalServerError,"something went wrong", httpx.CodeInternalError)
 		return
 	}
 
