@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 	"github.com/ab91dev/codeolx/internal/db"
 	"github.com/ab91dev/codeolx/internal/handlers"
 	"github.com/ab91dev/codeolx/internal/middleware"
+	"github.com/ab91dev/codeolx/internal/storage"
 )
 
 func main() {
@@ -30,12 +32,25 @@ func main() {
 	slog.SetDefault(logger)
 
 	fmt.Println("database connected")
+
+	// storage initialisation
+	store, err := storage.NewR2Storage(context.TODO(), storage.R2Config{
+		AccountID:    cfg.StorageAccountID,
+		AccessKey:    cfg.StorageAccessKey,
+		AccessSecret: cfg.StorageAccessSecret,
+		Bucket:       cfg.StorageBucket,
+	})
+	if err != nil {
+		log.Fatalf("main.storage.r2", err)
+	}
+
+	fmt.Println("storage initialised...")
 	fmt.Println("starting the server...")
 
 	listingsHandler := handlers.NewListingHandlerParams(db, logger)
 	authHandler := handlers.NewAuthHandler(db, logger, cfg)
 	requireAuth := middleware.RequireAuth(logger, cfg.JWTKey)
-	uploadHandler := handlers.NewUploadHandler(logger)
+	uploadHandler := handlers.NewUploadHandler(logger, store)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
