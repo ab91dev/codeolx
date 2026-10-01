@@ -10,6 +10,7 @@ import (
 
 	"github.com/ab91dev/codeolx/internal/httpx"
 	"github.com/ab91dev/codeolx/internal/middleware"
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -38,10 +39,12 @@ func NewAuthHandler(db *sql.DB, logger *slog.Logger) *AuthHandler {
 func (ah AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {	
 	ctx := r.Context()
 	requestId := middleware.RequestIDFromContext(ctx)
+
+	log := ah.logger.With("request_id", requestId)
 	
 	var req SignUpRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		ah.logger.Error("failed to decode","request_id", requestId,"error",err)
+		log.Error("failed to decode","error",err)
 		httpx.Error(w,http.StatusBadRequest,"invalid body", httpx.CodeMalformedJSON)
 		return
 	}
@@ -56,7 +59,7 @@ func (ah AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	// cost = how slow you want your hashing function - 2^cost rounds.
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 	if err != nil {
-		ah.logger.Error("hashing failed", "error:",err)
+		log.Error("hashing failed", "error:",err)
 		httpx.Error(w, http.StatusInternalServerError, "something went wrong", httpx.CodeInternalError)
 		return
 	}
@@ -66,12 +69,29 @@ func (ah AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	RETURNING id, created_at`,
 	req.Name, req.Email, hash)
 
-	var u user
+	var u SignUpResponse
 	if err := row.Scan(&u.ID,&u.CreatedAt); err != nil {
-		ah.logger.Error("scanning failed", "error", err)
+		
+		var pgErr *pgconn.PgError
+		if errors.As(err,&pgErr) && pgErr.Code == "23505"{
+			httpx.Error(w, http.StatusConflict, "email already taken", httpx.CodeConflict)
+			return
+		}
+
+		log.Error("scanning failed", "error", err)
 		httpx.Error(w, http.StatusInternalServerError, "something went wrong", httpx.CodeInternalError)
 		return
 	}
 
-}
+	out := SignUpResponse{
+		ID: u.ID,
+		CreatedAt: u.CreatedAt,
+	}
 
+	log.Info("new user registered","user_id",out.ID)
+
+	w.Header().Set("Content-Type","application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	_ = json.NewEncoder(w).Encode(out)
+}
