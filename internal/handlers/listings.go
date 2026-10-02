@@ -11,8 +11,14 @@ import (
 
 	"github.com/ab91dev/codeolx/internal/httpx"
 	"github.com/ab91dev/codeolx/internal/middleware"
+	"github.com/ab91dev/codeolx/internal/storage"
 	"github.com/google/uuid"
 )
+
+type ImageSource struct {
+	UploadKey string `json:"upload_key"`
+	ObjectKey string `json:"object_key"`
+}
 
 type listings struct {
 	ID          string    `json:"id"`
@@ -27,12 +33,14 @@ type listings struct {
 type ListingHandlerParams struct {
 	db     *sql.DB
 	logger *slog.Logger
+	storage *storage.Client
 }
 
-func NewListingHandlerParams(db *sql.DB, logger *slog.Logger) *ListingHandlerParams {
+func NewListingHandlerParams(db *sql.DB, logger *slog.Logger, storage *storage.Client) *ListingHandlerParams {
 	return &ListingHandlerParams{
 		db:     db,
 		logger: logger,
+		storage: storage,
 	}
 }
 
@@ -134,8 +142,49 @@ func (lh ListingHandlerParams) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	listingID := uuid.New()
+	sources := make([]ImageSource,0, len(req.ImageKeys))
+	for _,key := range req.ImageKeys {
+		imageID,ext , err := parseUploadKey(key,userID)
+		if err != nil {
+			lh.logger.Error("failed to parse image key", "image_id", imageID, "error", err)
+			httpx.Error(w, http.StatusBadRequest, "invalid image keys", httpx.CodeMalformedJSON)
+			return
+		}
+
+		sources = append(sources, ImageSource{
+			UploadKey: key,
+			ObjectKey: mintFinalObjectKey(listingID, imageID, ext),
+		})
+	}
+
+	for _, s := range sources{
+		contentLength, contentType, err := lh.storage.Head(ctx, s.UploadKey)
+		if errors.Is(err, storage.ErrNotFound) {
+			// todo log
+			httpx.ValidationError(w, http.StatusBadRequest, "no object found at object_key", httpx.CodeMalformedJSON, "image_keys")
+			return
+		}
+
+		if err != nil {
+			httpx.ValidationError(w, http.StatusInternalServerError, "something went wrong", httpx.CodeInternalError, "image_keys")
+			return
+		}
+
+		if contentLength <= 0 || contentLength > maxImageBytes {
+			httpx.ValidationError(w, http.StatusBadRequest, "uploaded object size violates the size limit", httpx.CodeValidationFailed, "image_keys")
+			return
+		}
+
+		if _,ok := allowedContentTypes[contentType]; !ok {
+			// todo
+			httpx.ValidationError(w, http.StatusBadRequest, "uploaded object has an unsupported content type", httpx.CodeValidationFailed, "image_keys")
+			return
+		}
+	}
+
 	row := lh.db.QueryRowContext(ctx, `
-	INSERT INTO listings (user_id, title,description,price,city) VALUES ($1,$2,$3,$4, $5) RETURNING id, title, created_at`, userID, req.Title, req.Description, req.Price, req.City)
+	INSERT INTO listings (id, user_id, title,description,price,city) VALUES ($1,$2,$3,$4, $5, $6) RETURNING id, title, created_at`, listingID, userID, req.Title, req.Description, req.Price, req.City)
 
 	var out CreateListingResponse
 	if err := row.Scan(&out.ID, &out.Title, &out.CreatedAt); err != nil {
