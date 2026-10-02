@@ -11,6 +11,7 @@ type CreateListingRequest struct {
 	Description string `json:"description"`
 	Price       int64  `json:"price"`
 	City        string `json:"city"`
+	ImageKeys []string `json:"image_keys"`
 }
 
 type CreateListingResponse struct {
