@@ -47,7 +47,7 @@ func main() {
 	fmt.Println("storage initialised...")
 	fmt.Println("starting the server...")
 
-	listingsHandler := handlers.NewListingHandlerParams(db, logger)
+	listingsHandler := handlers.NewListingHandlerParams(db, logger, store)
 	authHandler := handlers.NewAuthHandler(db, logger, cfg)
 	requireAuth := middleware.RequireAuth(logger, cfg.JWTKey)
 	uploadHandler := handlers.NewUploadHandler(logger, store)
